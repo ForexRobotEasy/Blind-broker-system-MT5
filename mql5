@@ -1,0 +1,86 @@
+
+// Developer's site: forexroboteasy.com
+// Development name: Forex Robot Easy Team
+
+//+------------------------------------------------------------------+
+//|                                                     Blind Broker |
+//|                                     Conceals trading strategies |
+//|                                    and orders from the broker. |
+//+------------------------------------------------------------------+
+class CBlindBroker : public CExpertAdvisor {
+
+   // Define variables
+   double stopLossLevel;
+   double takeProfitLevel;
+   double tradeVolume;
+
+   // Define order management variables
+   CArray <COrder> orders;
+
+   //+------------------------------------------------------------------+
+   //|                                                                  |
+   //+------------------------------------------------------------------+
+   void OnTick(){
+
+      // Retrieve current market price
+      double currentPrice = MarketInfo(Symbol(), MODE_BID);
+
+      // Check for existing orders
+      for(int i = 0; i < orders.Total(); i++){
+
+         COrder order;
+         orders.Get(order, i);
+
+         // Check for stop loss level
+         if(currentPrice <= order.StopLoss()){
+            order.Close(order.Volume());
+         }
+
+         // Check for take profit level
+         if(currentPrice >= order.TakeProfit()){
+            order.Close(order.Volume());
+         }
+
+      }
+
+      // Place market order requests
+      if(!orders.Total()){
+         // Place market order request
+         OrderSend(Symbol(), OP_BUY, tradeVolume, currentPrice, 0, 0, 0, 'Blind Broker');
+      }
+   }
+
+   //+------------------------------------------------------------------+
+   //|                                                                  |
+   //+------------------------------------------------------------------+
+   void OnTrade(){
+
+      // Retrieve trading account information
+      AccountInfo account;
+      AccountGet(account);
+
+      // Set trade volume
+      tradeVolume = NormalizeDouble(account.Balance() * 0.01 / MarketInfo(Symbol(), MODE_TICKVALUE), 2);
+
+      // Set stop loss level
+      stopLossLevel = MarketInfo(Symbol(), MODE_BID) - (MarketInfo(Symbol(), MODE_POINT) * 100);
+
+      // Set take profit level
+      takeProfitLevel = MarketInfo(Symbol(), MODE_BID) + (MarketInfo(Symbol(), MODE_POINT) * 100);
+
+      // Create market order request
+      OrderSend(Symbol(), OP_BUY, tradeVolume, MarketInfo(Symbol(), MODE_BID), 0, stopLossLevel, takeProfitLevel, 'Blind Broker');
+   }
+
+   //+------------------------------------------------------------------+
+   //|                                                                  |
+   //+------------------------------------------------------------------+
+   void OnDeinit(const int reason){
+      // Close all existing orders
+      for(int i = 0; i < orders.Total(); i++){
+         COrder order;
+         orders.Get(order, i);
+         order.Close(order.Volume());
+      }
+   }
+}
